@@ -1,5 +1,7 @@
 export type ModerationVerdict = 'PUBLISH' | 'AUTO_BLOCK' | 'ESCALATE_HUMAN' | 'FLAG_WARNING';
 
+export type AgentMode = 'linkedin' | 'twitter' | 'shield' | 'general';
+
 export type ModerationCategory = 
   | 'Hate Speech & Harassment'
   | 'Crypto & Financial Fraud'
@@ -11,6 +13,9 @@ export type ModerationCategory =
   | 'Toxic Harassment'
   | 'Technical Question'
   | 'Impersonation Attempt'
+  | 'LinkedIn Post Generation'
+  | 'X/Twitter Thread Creation'
+  | 'Shield Security Assessment'
   | string;
 
 export interface AgentThought {
@@ -25,10 +30,31 @@ export interface SuggestedReplies {
   userActionAdvice: string;
 }
 
+export interface SafetyCheckResult {
+  status: 'CLEARED' | 'NEEDS_CAUTION' | 'BLOCKED';
+  riskScore: number; // 0 to 100
+  brandSafetyScore: number; // 0 to 100
+  specialistVerdict: string;
+}
+
+export interface CraftedContent {
+  title?: string;
+  mainBody?: string;
+  hooks?: string[];
+  hashtags?: string[];
+  actionSuggestions?: string[];
+}
+
+export interface SuggestedReplyOption {
+  label: string;
+  text: string;
+}
+
 export interface ModerationResult {
   id: string;
+  mode?: AgentMode;
   verdict: ModerationVerdict;
-  confidence: number; // 0 to 100 or 0.0 to 1.0
+  confidence: number; // 0 to 100
   riskScore: number; // 0 to 100
   category: ModerationCategory;
   conversationalAssessment?: string;
@@ -42,10 +68,16 @@ export interface ModerationResult {
   timestamp: string;
   latencyMs?: number;
   specialistScore?: number;
+  
+  // Growth & Safety Co-Pilot Additions
+  safetyCheck?: SafetyCheckResult;
+  craftedContent?: CraftedContent;
+  shieldReplies?: SuggestedReplyOption[];
 }
 
 export interface ModerationRequest {
   text: string;
+  mode?: AgentMode;
   context?: string;
   authorId?: string;
   platform?: string;

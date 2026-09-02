@@ -7,7 +7,7 @@ import { ModerationQueue } from '@/components/ModerationQueue';
 import { MetricsModal } from '@/components/MetricsModal';
 import { AgentThoughtDrawer } from '@/components/AgentThoughtDrawer';
 import { INITIAL_MOCK_FEED, MODEL_BENCHMARKS } from '@/data/mockFeed';
-import { QueueItem, ModerationResult } from '@/types/moderation';
+import { QueueItem, ModerationResult, AgentMode } from '@/types/moderation';
 import { ShieldCheck, BarChart3, CheckCircle2, Award, Layers, Database, Sparkles, AlertTriangle, MessageSquare } from 'lucide-react';
 
 export default function Home() {
@@ -18,30 +18,11 @@ export default function Home() {
   const [latestLatency, setLatestLatency] = useState<number>(125);
   const [presetInputText, setPresetInputText] = useState<string>('');
 
-  const quickPills = [
-    {
-      label: '🚨 Crypto Scam',
-      text: '🚀 URGENT: Elon Musk is doubling all ETH and BTC deposits! Send 0.5 ETH to 0x71A...9F2 to receive 1 ETH back instantly. Claim at http://claim-tesla-rewards.crypto-drop.xyz'
-    },
-    {
-      label: '🤬 Toxic Attack',
-      text: 'You guys are absolute trash. Nobody likes your product, go sell somewhere else before I find out where your team is located and make you regret it. You are disgusting rats.'
-    },
-    {
-      label: '💡 Constructive Critique',
-      text: 'While the newly proposed regulation framework introduces compliance overhead for startups, it provides essential guardrails for consumer data privacy and model transparency.'
-    },
-    {
-      label: '💬 Friendly Inquiry',
-      text: 'I’ve been using WardenAI for 3 months to protect our Web3 community. The automated scam detection stopped over 4,500 fake giveaway bots. Great product!'
-    }
-  ];
-
-  const handleAnalyzeText = async (text: string): Promise<ModerationResult> => {
+  const handleAnalyzeText = async (text: string, mode: AgentMode = 'general'): Promise<ModerationResult> => {
     const res = await fetch('/api/moderate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text })
+      body: JSON.stringify({ text, mode })
     });
 
     if (!res.ok) {
@@ -65,13 +46,6 @@ export default function Home() {
     );
   };
 
-  const handleSelectPill = (text: string) => {
-    setPresetInputText(text);
-    if (activeTab !== 'CHAT') {
-      setActiveTab('CHAT');
-    }
-  };
-
   return (
     <div className="min-h-screen cosmic-bg vignette-glow text-slate-100 flex flex-col font-sans selection:bg-purple-500/30">
       {/* Top Minimalist Header */}
@@ -86,36 +60,22 @@ export default function Home() {
       <main className="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 space-y-8">
         
         {/* Minimalist Hero */}
-        <div className="text-center space-y-4 max-w-2xl mx-auto">
+        <div className="text-center space-y-4 max-w-3xl mx-auto">
           {/* Small Glowing Badge */}
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs font-mono">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-            <span>🛡️ Trust &amp; Safety Co-Pilot</span>
+            <span>🚀 Social Media Growth &amp; Safety Co-Pilot</span>
           </div>
 
           {/* Large Clean Title */}
           <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight text-white font-sans leading-tight">
-            Meet Warden, Your AI Community Guardian
+            Meet Warden, Your AI Creator Co-Pilot
           </h1>
 
           {/* Elegant Subtitle */}
           <p className="text-sm sm:text-base text-slate-400 font-sans leading-relaxed">
-            A calm, consistent moderator trained to spot toxicity, scams, and nuanced feedback in real time.
+            Craft viral LinkedIn posts &amp; X threads, de-escalate troll comments, and inspect suspicious sponsor emails with pre-flight Qwen-1.5B safety guardrails.
           </p>
-
-          {/* Quick-test Suggestion Pills */}
-          <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
-            {quickPills.map((pill, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => handleSelectPill(pill.text)}
-                className="px-3.5 py-1.5 rounded-full text-xs font-medium bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 hover:border-purple-500/40 transition-all duration-200 cursor-pointer shadow-sm active:scale-95"
-              >
-                {pill.label}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* View 1: Centerpiece Conversational Chat Widget */}
@@ -243,7 +203,7 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-slate-400 font-mono">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>WardenAI Guardian • Model: <span className="text-slate-200">narendraseelam/content-moderator-qwen</span></span>
+            <span>WardenAI Creator Co-Pilot • Model: <span className="text-slate-200">narendraseelam/content-moderator-qwen</span></span>
           </div>
           <div className="text-slate-500">
             Powered by Google Gemini 2.5 Flash &amp; Qwen-1.5B QLoRA
