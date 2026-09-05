@@ -2,13 +2,13 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export type UserRole = 'Trust & Safety Lead' | 'Community Moderator' | 'Security Engineer';
+export type UserRole = 'Trust & Safety Lead' | 'Community Moderator' | 'Security Engineer' | 'Creator Co-Pilot' | string;
 
 export interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: UserRole | string;
+  role: UserRole;
   avatarUrl?: string;
 }
 
@@ -19,12 +19,21 @@ export interface StoredAccount extends UserProfile {
 interface AuthContextType {
   user: UserProfile | null;
   login: (email: string, pass: string) => Promise<{ success: boolean; message?: string }>;
-  register: (name: string, email: string, pass: string, role: UserRole | string) => Promise<{ success: boolean; message?: string }>;
+  register: (name: string, email: string, pass: string, role?: string) => Promise<{ success: boolean; message?: string }>;
+  loginWithGoogle: () => void;
   loginAsDemoLead: () => void;
   loginAsDemoModerator: () => void;
   logout: () => void;
   isLoading: boolean;
 }
+
+const GOOGLE_DEMO_USER: UserProfile = {
+  id: 'usr-google-creator',
+  name: 'Demo Creator',
+  email: 'creator@warden.ai',
+  role: 'Creator Co-Pilot',
+  avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
+};
 
 const DEMO_LEAD_USER: UserProfile = {
   id: 'usr-lead-101',
@@ -50,16 +59,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     try {
-      const storedSession = localStorage.getItem('warden_user_session');
+      const storedSession = localStorage.getItem('warden_current_user') || localStorage.getItem('warden_user_session');
       if (storedSession) {
         setUser(JSON.parse(storedSession));
       } else {
-        // Default to active demo session for instant studio access
-        setUser(DEMO_LEAD_USER);
-        localStorage.setItem('warden_user_session', JSON.stringify(DEMO_LEAD_USER));
+        setUser(GOOGLE_DEMO_USER);
+        localStorage.setItem('warden_current_user', JSON.stringify(GOOGLE_DEMO_USER));
       }
     } catch (e) {
-      setUser(DEMO_LEAD_USER);
+      setUser(GOOGLE_DEMO_USER);
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +75,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; message?: string }> => {
     try {
-      const storedUsersRaw = localStorage.getItem('warden_registered_users');
+      const storedUsersRaw = localStorage.getItem('warden_users') || localStorage.getItem('warden_registered_users');
       const registeredUsers: StoredAccount[] = storedUsersRaw ? JSON.parse(storedUsersRaw) : [];
 
       const match = registeredUsers.find(
@@ -79,15 +87,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           id: match.id,
           name: match.name,
           email: match.email,
-          role: match.role,
+          role: match.role || 'Creator Co-Pilot',
           avatarUrl: match.avatarUrl
         };
         setUser(profile);
-        localStorage.setItem('warden_user_session', JSON.stringify(profile));
+        localStorage.setItem('warden_current_user', JSON.stringify(profile));
         return { success: true };
       }
 
-      // Check if matching demo email or fallback demo login
+      if (email.toLowerCase() === GOOGLE_DEMO_USER.email.toLowerCase()) {
+        loginWithGoogle();
+        return { success: true };
+      }
       if (email.toLowerCase() === DEMO_LEAD_USER.email.toLowerCase()) {
         loginAsDemoLead();
         return { success: true };
@@ -97,16 +108,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: true };
       }
 
-      // Allow login for any valid email format in studio demo mode
+      // Allow fallback login for any user credential
       const fallbackUser: UserProfile = {
         id: `usr-${Date.now().toString(36)}`,
-        name: email.split('@')[0].replace('.', ' ') || 'Trust Lead',
+        name: email.split('@')[0].replace('.', ' ') || 'Demo User',
         email,
-        role: 'Trust & Safety Lead',
+        role: 'Creator Co-Pilot',
         avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
       };
       setUser(fallbackUser);
-      localStorage.setItem('warden_user_session', JSON.stringify(fallbackUser));
+      localStorage.setItem('warden_current_user', JSON.stringify(fallbackUser));
       return { success: true };
     } catch (err) {
       return { success: false, message: 'Login failed. Please try again.' };
@@ -117,10 +128,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string,
     email: string,
     pass: string,
-    role: UserRole | string
+    role?: string
   ): Promise<{ success: boolean; message?: string }> => {
     try {
-      const storedUsersRaw = localStorage.getItem('warden_registered_users');
+      const storedUsersRaw = localStorage.getItem('warden_users') || localStorage.getItem('warden_registered_users');
       const registeredUsers: StoredAccount[] = storedUsersRaw ? JSON.parse(storedUsersRaw) : [];
 
       if (registeredUsers.some(u => u.email.toLowerCase() === email.toLowerCase())) {
@@ -131,13 +142,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         id: `usr-${Date.now().toString(36)}`,
         name,
         email,
-        role: role || 'Trust & Safety Lead',
+        role: role || 'Creator Co-Pilot',
         passwordHash: pass,
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'
+        avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
       };
 
       registeredUsers.push(newAccount);
-      localStorage.setItem('warden_registered_users', JSON.stringify(registeredUsers));
+      localStorage.setItem('warden_users', JSON.stringify(registeredUsers));
 
       const profile: UserProfile = {
         id: newAccount.id,
@@ -148,30 +159,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       setUser(profile);
-      localStorage.setItem('warden_user_session', JSON.stringify(profile));
+      localStorage.setItem('warden_current_user', JSON.stringify(profile));
       return { success: true };
     } catch (err) {
       return { success: false, message: 'Registration failed. Please try again.' };
     }
   };
 
+  const loginWithGoogle = () => {
+    setUser(GOOGLE_DEMO_USER);
+    localStorage.setItem('warden_current_user', JSON.stringify(GOOGLE_DEMO_USER));
+  };
+
   const loginAsDemoLead = () => {
     setUser(DEMO_LEAD_USER);
-    localStorage.setItem('warden_user_session', JSON.stringify(DEMO_LEAD_USER));
+    localStorage.setItem('warden_current_user', JSON.stringify(DEMO_LEAD_USER));
   };
 
   const loginAsDemoModerator = () => {
     setUser(DEMO_MODERATOR_USER);
-    localStorage.setItem('warden_user_session', JSON.stringify(DEMO_MODERATOR_USER));
+    localStorage.setItem('warden_current_user', JSON.stringify(DEMO_MODERATOR_USER));
   };
 
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('warden_current_user');
     localStorage.removeItem('warden_user_session');
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, loginAsDemoLead, loginAsDemoModerator, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, register, loginWithGoogle, loginAsDemoLead, loginAsDemoModerator, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );

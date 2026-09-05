@@ -180,7 +180,7 @@ export const ModerationQueue: React.FC<ModerationQueueProps> = ({ items, onOverr
                       </span>
                     </div>
 
-                    <span className="text-[10px] text-gray-500 font-mono flex items-center gap-1">
+                    <span suppressHydrationWarning className="text-[10px] text-gray-500 font-mono flex items-center gap-1">
                       <Clock className="w-3 h-3" /> {item.createdAt}
                     </span>
                   </div>

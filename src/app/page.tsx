@@ -18,11 +18,22 @@ export default function Home() {
   const [latestLatency, setLatestLatency] = useState<number>(125);
   const [presetInputText, setPresetInputText] = useState<string>('');
 
-  const handleAnalyzeText = async (text: string, mode: AgentMode = 'general'): Promise<ModerationResult> => {
+  const handleAnalyzeText = async (
+    text: string, 
+    mode: AgentMode = 'general',
+    history?: any[]
+  ): Promise<ModerationResult> => {
+    const simplifiedHistory = history?.map(m => ({
+      sender: m.sender,
+      text: m.text,
+      mode: m.mode,
+      craftedContent: m.result?.craftedContent
+    }));
+
     const res = await fetch('/api/moderate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, mode })
+      body: JSON.stringify({ text, mode, history: simplifiedHistory })
     });
 
     if (!res.ok) {

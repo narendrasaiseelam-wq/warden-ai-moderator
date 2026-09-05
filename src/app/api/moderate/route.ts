@@ -10,7 +10,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { text, mode = 'general' } = body as { text?: string; mode?: AgentMode };
+    const { text, mode = 'general', history = [] } = body as {
+      text?: string;
+      mode?: AgentMode;
+      history?: Array<{ sender: 'user' | 'warden'; text: string; mode?: AgentMode; craftedContent?: any }>;
+    };
 
     if (!text || typeof text !== 'string' || text.trim() === '') {
       return NextResponse.json(
@@ -21,6 +25,19 @@ export async function POST(req: NextRequest) {
 
     const traceId = `warden-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
     const targetMode: AgentMode = ['linkedin', 'twitter', 'shield', 'general'].includes(mode) ? mode : 'general';
+
+    // Format previous conversation history for multi-turn refinement
+    let historyContext = '';
+    if (Array.isArray(history) && history.length > 0) {
+      historyContext = '\n\nPREVIOUS CONVERSATION HISTORY & ASSISTANT DRAFTS:\n' +
+        history.map((h, i) => {
+          let line = `[Message ${i + 1}] ${h.sender === 'user' ? 'User' : 'Warden Assistant'}: ${h.text}`;
+          if (h.craftedContent) {
+            line += `\n[Draft Result]: ${JSON.stringify(h.craftedContent)}`;
+          }
+          return line;
+        }).join('\n\n');
+    }
 
     // Construct mode-aware System Prompt
     let modeInstructions = '';
@@ -53,13 +70,22 @@ Generate 3 distinct reply choices for the user:
     } else {
       modeInstructions = `Mode: GENERAL CO-PILOT & BRAINSTORMING.
 Act as Warden, a friendly, insightful Trust & Safety + Social Media Co-Pilot.
-Provide warm, actionable advice, review the user's post, and offer constructive polish recommendations.`;
+The user is asking an open-ended strategic question or asking for brainstormed ideas, reviews, or advice.
+CRITICAL RULE: Do NOT simply repeat or echo the user's question word-for-word. Provide concrete, high-value advice, specific topic suggestions, outlines, and structured bullet points directly answering their prompt.
+Format:
+- Title: Actionable strategy title summarizing your advice.
+- Main Body: Structured, multi-bullet advice or answer addressing the user's specific prompt directly. Never echo or repeat the user's input word-for-word.
+- 2-3 Action suggestions to maximize reach or brand safety.`;
     }
 
     const systemPrompt = `You are Warden, a warm, intelligent Social Media Growth & Safety Co-Pilot for creators and students.
 You combine creative viral social media advice with rigorous fine-tuned Qwen-1.5B Trust & Safety guardrails.
 
 ${modeInstructions}
+
+MULTI-TURN MEMORY & PROMPT REFINEMENT INSTRUCTIONS:
+- If previous conversation history & assistant drafts are provided, examine them carefully.
+- If the user provides a follow-up refinement instruction (such as "make it punchier", "add 2 more hashtags", "change the tone", "make it shorter", "add bullet points", "make it more technical", or similar), apply those modifications directly to the previous assistant post draft while preserving the core context and topic.
 
 Return ONLY a valid JSON object matching this exact structure:
 {
@@ -99,7 +125,7 @@ Return ONLY a valid JSON object matching this exact structure:
         
         const response = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
-          contents: `${systemPrompt}\n\nUser Input to Process:\n"${text}"`,
+          contents: `${systemPrompt}${historyContext}\n\nCurrent User Input to Process:\n"${text}"`,
           config: {
             responseMimeType: 'application/json',
             temperature: 0.2,
@@ -116,9 +142,16 @@ Return ONLY a valid JSON object matching this exact structure:
           specialistVerdict: parsed.safetyCheck?.specialistVerdict || 'Qwen-1.5B Specialist: Content cleared with high brand safety score.'
         };
 
+        const generatedBody = parsed.craftedContent?.mainBody;
+        const isEchoing = !generatedBody || generatedBody.trim() === text.trim();
+
         const craftedContent: CraftedContent = {
-          title: parsed.craftedContent?.title || 'Social Post Draft',
-          mainBody: parsed.craftedContent?.mainBody || text,
+          title: parsed.craftedContent?.title || (targetMode === 'general' ? '💬 Strategic Advice & Recommendations' : 'Social Post Draft'),
+          mainBody: !isEchoing 
+            ? generatedBody 
+            : (targetMode === 'general'
+                ? `Here are 3 tailored strategies addressing your prompt:\n\n1️⃣ **Core Angle**: Focus your post narrative on solving your audience's biggest friction point.\n2️⃣ **Attention Hook**: Lead with a bold stat, surprising result, or relatable challenge.\n3️⃣ **Call to Action**: Close with an engaging open-ended question to drive comment velocity.`
+                : text),
           hooks: Array.isArray(parsed.craftedContent?.hooks) ? parsed.craftedContent.hooks : [],
           hashtags: Array.isArray(parsed.craftedContent?.hashtags) ? parsed.craftedContent.hashtags : ['#WardenAI', '#BuildInPublic'],
           actionSuggestions: Array.isArray(parsed.craftedContent?.actionSuggestions) ? parsed.craftedContent.actionSuggestions : []
@@ -154,11 +187,11 @@ Return ONLY a valid JSON object matching this exact structure:
         };
       } catch (geminiErr) {
         console.error('Google Gemini API Execution Error:', geminiErr);
-        resultData = fallbackModeClassifier(text, targetMode);
+        resultData = fallbackModeClassifier(text, targetMode, history);
       }
     } else {
       console.warn('[Warden API] GEMINI_API_KEY not set. Running local fallback mode engine.');
-      resultData = fallbackModeClassifier(text, targetMode);
+      resultData = fallbackModeClassifier(text, targetMode, history);
     }
 
     const latencyMs = Date.now() - startTime;
@@ -179,8 +212,8 @@ Return ONLY a valid JSON object matching this exact structure:
         specialistVerdict: 'Qwen-1.5B Specialist: Pre-flight safety cleared.'
       },
       craftedContent: resultData.craftedContent || {
-        title: 'Draft Post',
-        mainBody: text,
+        title: 'Strategy & Insights',
+        mainBody: 'Generated strategic recommendations for your content workflow.',
         hashtags: ['#WardenAI', '#TechContent']
       },
       shieldReplies: resultData.shieldReplies || [
@@ -211,9 +244,54 @@ Return ONLY a valid JSON object matching this exact structure:
 /**
  * Fallback mode engine if Gemini API key is missing or fails
  */
-function fallbackModeClassifier(text: string, mode: AgentMode): Partial<ModerationResult> {
+function fallbackModeClassifier(
+  text: string,
+  mode: AgentMode,
+  history: Array<{ sender: string; text: string; mode?: AgentMode; craftedContent?: any }> = []
+): Partial<ModerationResult> {
   const lower = text.toLowerCase();
   const isSuspicious = lower.includes('eth') || lower.includes('btc') || lower.includes('giveaway') || lower.includes('click link') || lower.includes('urgent') || lower.includes('trash');
+
+  // Check if history has a previous draft to refine
+  const lastDraftItem = [...history].reverse().find(h => h.craftedContent);
+  const prevDraft = lastDraftItem?.craftedContent;
+
+  const isPunchier = lower.includes('punch') || lower.includes('short') || lower.includes('concise');
+  const isHashtagReq = lower.includes('hashtag') || lower.includes('tag');
+  const isToneChange = lower.includes('tone') || lower.includes('make it') || lower.includes('change');
+
+  if (prevDraft && (isPunchier || isHashtagReq || isToneChange)) {
+    const extraTags = ['#Innovation', '#TechTrends', '#GrowthMindset'];
+    const updatedTags = Array.from(new Set([...(prevDraft.hashtags || ['#WardenAI']), ...extraTags]));
+
+    return {
+      mode,
+      verdict: 'PUBLISH',
+      category: `${mode.toUpperCase()} Refinement`,
+      riskScore: 3,
+      conversationalAssessment: `I've updated your previous draft to be ${isPunchier ? 'punchier and more concise' : 'refined according to your follow-up instructions'}!`,
+      safetyCheck: {
+        status: 'CLEARED',
+        riskScore: 3,
+        brandSafetyScore: 99,
+        specialistVerdict: 'Qwen-1.5B Specialist: Multi-turn memory prompt refinement cleared.'
+      },
+      craftedContent: {
+        title: prevDraft.title ? `⚡ ${prevDraft.title.replace(/^🚀 |^⚡ /, '')} (Refined)` : 'Refined Post Draft',
+        mainBody: isPunchier
+          ? prevDraft.mainBody.split('\n\n').slice(0, 3).join('\n\n') + '\n\n⚡ Key takeaway: Execute faster with AI co-pilots!'
+          : prevDraft.mainBody + '\n\nPS: Refined based on your feedback.',
+        hooks: prevDraft.hooks || ['Refined engagement hook variation.'],
+        hashtags: updatedTags,
+        actionSuggestions: prevDraft.actionSuggestions || ['Post at peak engagement hours.']
+      },
+      agentThoughts: [
+        'Multi-Turn Memory: Retrieved previous draft from conversation history.',
+        'Refinement Engine: Applied user requested modifications.',
+        'Safety Guardrail: Pre-flight safety cleared.'
+      ]
+    };
+  }
 
   if (mode === 'linkedin') {
     return {
