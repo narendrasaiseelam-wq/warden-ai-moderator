@@ -15,34 +15,40 @@ export default function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [touched, setTouched] = useState<{ name?: boolean; email?: boolean; password?: boolean; confirmPassword?: boolean }>({});
 
   const { register, loginWithGoogle } = useAuth();
   const router = useRouter();
 
+  const emailRegex = /\S+@\S+\.\S+/;
+  const isEmailValid = emailRegex.test(email);
+  const isPasswordValid = password.length >= 6;
+  const isPasswordMatch = confirmPassword.length > 0 && confirmPassword === password;
+  const isPasswordMismatch = confirmPassword.length > 0 && confirmPassword !== password;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setTouched({ name: true, email: true, password: true, confirmPassword: true });
     setErrorMsg('');
 
     // Validation 1: Check non-empty fields
-    if (!name.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
-      setErrorMsg('Please fill in all required fields.');
+    if (!name.trim()) {
+      setErrorMsg('Please enter your full name.');
       return;
     }
 
-    // Validation 2: Email format regex
-    const emailRegex = /\S+@\S+\.\S+/;
-    if (!emailRegex.test(email)) {
+    if (!email.trim() || !isEmailValid) {
       setErrorMsg('Please enter a valid email address.');
       return;
     }
 
-    // Validation 3: Minimum password length
-    if (password.length < 6) {
+    // Validation 2: Minimum password length
+    if (!isPasswordValid) {
       setErrorMsg('Password must be at least 6 characters long.');
       return;
     }
 
-    // Validation 4: Password mismatch check
+    // Validation 3: Password mismatch check
     if (password !== confirmPassword) {
       setErrorMsg('Passwords do not match.');
       return;
@@ -126,7 +132,7 @@ export default function RegisterPage() {
         {/* Footer */}
         <div className="relative z-10 text-xs text-slate-500 font-mono flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Powered by Google Gemini 2.5 Flash &amp; Qwen-1.5B QLoRA</span>
+          <span>Powered by Google Gemini 3.6 Flash &amp; Qwen-1.5B QLoRA</span>
         </div>
       </div>
 
@@ -165,11 +171,21 @@ export default function RegisterPage() {
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onBlur={() => setTouched(prev => ({ ...prev, name: true }))}
                   placeholder="Demo Creator"
                   required
-                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-800 bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  className={`w-full pl-11 pr-4 py-3 rounded-xl border bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-sans ${
+                    touched.name && !name.trim() 
+                      ? 'border-rose-500/60 focus:border-rose-500' 
+                      : 'border-slate-800 focus:border-emerald-500'
+                  }`}
                 />
               </div>
+              {touched.name && !name.trim() && (
+                <p className="text-[11px] text-rose-400 mt-1 font-sans">
+                  Full name is required.
+                </p>
+              )}
             </div>
 
             {/* Email Address */}
@@ -183,11 +199,21 @@ export default function RegisterPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
                   placeholder="creator@warden.ai"
                   required
-                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-800 bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  className={`w-full pl-11 pr-4 py-3 rounded-xl border bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-sans ${
+                    touched.email && !isEmailValid 
+                      ? 'border-rose-500/60 focus:border-rose-500' 
+                      : 'border-slate-800 focus:border-emerald-500'
+                  }`}
                 />
               </div>
+              {touched.email && !isEmailValid && (
+                <p className="text-[11px] text-rose-400 mt-1 font-sans">
+                  Please enter a valid email address.
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -201,9 +227,14 @@ export default function RegisterPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
                   placeholder="Minimum 6 characters"
                   required
-                  className="w-full pl-11 pr-11 py-3 rounded-xl border border-slate-800 bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  className={`w-full pl-11 pr-11 py-3 rounded-xl border bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-sans ${
+                    touched.password && !isPasswordValid 
+                      ? 'border-rose-500/60 focus:border-rose-500' 
+                      : 'border-slate-800 focus:border-emerald-500'
+                  }`}
                 />
                 <button
                   type="button"
@@ -213,6 +244,11 @@ export default function RegisterPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {touched.password && !isPasswordValid && (
+                <p className="text-[11px] text-rose-400 mt-1 font-sans">
+                  Password must be at least 6 characters long.
+                </p>
+              )}
             </div>
 
             {/* Confirm Password */}
@@ -226,9 +262,16 @@ export default function RegisterPage() {
                   type={showConfirmPassword ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  onBlur={() => setTouched(prev => ({ ...prev, confirmPassword: true }))}
                   placeholder="Re-enter password"
                   required
-                  className="w-full pl-11 pr-11 py-3 rounded-xl border border-slate-800 bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  className={`w-full pl-11 pr-11 py-3 rounded-xl border bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-sans ${
+                    isPasswordMismatch 
+                      ? 'border-rose-500/60 focus:border-rose-500' 
+                      : isPasswordMatch 
+                      ? 'border-emerald-500/60 focus:border-emerald-500' 
+                      : 'border-slate-800 focus:border-emerald-500'
+                  }`}
                 />
                 <button
                   type="button"
@@ -238,6 +281,22 @@ export default function RegisterPage() {
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+
+              {/* Real-Time Password Match Indicator */}
+              {confirmPassword.length > 0 && (
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  {isPasswordMatch ? (
+                    <span className="text-[11px] font-semibold text-emerald-400 flex items-center gap-1">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Passwords match</span>
+                    </span>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-rose-400 flex items-center gap-1">
+                      <span>⚠️ Passwords do not match</span>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Primary CTA Button */}

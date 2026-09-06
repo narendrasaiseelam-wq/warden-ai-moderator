@@ -36,11 +36,12 @@ export default function Home() {
       body: JSON.stringify({ text, mode, history: simplifiedHistory })
     });
 
+    const data = await res.json();
+
     if (!res.ok) {
-      throw new Error(`API returned status ${res.status}`);
+      throw new Error(data.details || data.error || `API returned status ${res.status}`);
     }
 
-    const data: ModerationResult = await res.json();
     if (data.latencyMs) {
       setLatestLatency(data.latencyMs);
     }
@@ -217,7 +218,7 @@ export default function Home() {
             <span>WardenAI Creator Co-Pilot • Model: <span className="text-slate-200">narendraseelam/content-moderator-qwen</span></span>
           </div>
           <div className="text-slate-500">
-            Powered by Google Gemini 2.5 Flash &amp; Qwen-1.5B QLoRA
+            Powered by Google Gemini 3.6 Flash &amp; Qwen-1.5B QLoRA
           </div>
         </div>
       </footer>

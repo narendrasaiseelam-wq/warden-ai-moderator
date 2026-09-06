@@ -1,6 +1,6 @@
 export type ModerationVerdict = 'PUBLISH' | 'AUTO_BLOCK' | 'ESCALATE_HUMAN' | 'FLAG_WARNING';
 
-export type AgentMode = 'linkedin' | 'twitter' | 'shield' | 'general';
+export type AgentMode = 'linkedin' | 'twitter' | 'instagram' | 'shield' | 'general';
 
 export type ModerationCategory = 
   | 'Hate Speech & Harassment'
@@ -15,6 +15,7 @@ export type ModerationCategory =
   | 'Impersonation Attempt'
   | 'LinkedIn Post Generation'
   | 'X/Twitter Thread Creation'
+  | 'Instagram Carousel Creation'
   | 'Shield Security Assessment'
   | string;
 
@@ -37,11 +38,18 @@ export interface SafetyCheckResult {
   specialistVerdict: string;
 }
 
+export interface CarouselSlide {
+  slideNumber: number;
+  title: string;
+  body: string;
+}
+
 export interface CraftedContent {
   title?: string;
   mainBody?: string;
   hooks?: string[];
   hashtags?: string[];
+  carouselSlides?: CarouselSlide[];
   actionSuggestions?: string[];
 }
 

@@ -60,9 +60,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     try {
       const storedSession = localStorage.getItem('warden_current_user') || localStorage.getItem('warden_user_session');
+      const isLoggedOut = localStorage.getItem('warden_logged_out') === 'true';
+
       if (storedSession) {
         setUser(JSON.parse(storedSession));
+      } else if (isLoggedOut) {
+        setUser(null);
       } else {
+        // Default demo session for first-time visitors
         setUser(GOOGLE_DEMO_USER);
         localStorage.setItem('warden_current_user', JSON.stringify(GOOGLE_DEMO_USER));
       }
@@ -72,6 +77,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     }
   }, []);
+
+  const saveUserSession = (profile: UserProfile) => {
+    setUser(profile);
+    localStorage.removeItem('warden_logged_out');
+    localStorage.setItem('warden_current_user', JSON.stringify(profile));
+  };
 
   const login = async (email: string, pass: string): Promise<{ success: boolean; message?: string }> => {
     try {
@@ -90,8 +101,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           role: match.role || 'Creator Co-Pilot',
           avatarUrl: match.avatarUrl
         };
-        setUser(profile);
-        localStorage.setItem('warden_current_user', JSON.stringify(profile));
+        saveUserSession(profile);
         return { success: true };
       }
 
@@ -116,8 +126,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: 'Creator Co-Pilot',
         avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80'
       };
-      setUser(fallbackUser);
-      localStorage.setItem('warden_current_user', JSON.stringify(fallbackUser));
+      saveUserSession(fallbackUser);
       return { success: true };
     } catch (err) {
       return { success: false, message: 'Login failed. Please try again.' };
@@ -158,8 +167,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         avatarUrl: newAccount.avatarUrl
       };
 
-      setUser(profile);
-      localStorage.setItem('warden_current_user', JSON.stringify(profile));
+      saveUserSession(profile);
       return { success: true };
     } catch (err) {
       return { success: false, message: 'Registration failed. Please try again.' };
@@ -167,24 +175,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const loginWithGoogle = () => {
-    setUser(GOOGLE_DEMO_USER);
-    localStorage.setItem('warden_current_user', JSON.stringify(GOOGLE_DEMO_USER));
+    saveUserSession(GOOGLE_DEMO_USER);
   };
 
   const loginAsDemoLead = () => {
-    setUser(DEMO_LEAD_USER);
-    localStorage.setItem('warden_current_user', JSON.stringify(DEMO_LEAD_USER));
+    saveUserSession(DEMO_LEAD_USER);
   };
 
   const loginAsDemoModerator = () => {
-    setUser(DEMO_MODERATOR_USER);
-    localStorage.setItem('warden_current_user', JSON.stringify(DEMO_MODERATOR_USER));
+    saveUserSession(DEMO_MODERATOR_USER);
   };
 
   const logout = () => {
     setUser(null);
     localStorage.removeItem('warden_current_user');
     localStorage.removeItem('warden_user_session');
+    localStorage.setItem('warden_logged_out', 'true');
   };
 
   return (

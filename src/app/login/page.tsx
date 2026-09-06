@@ -12,14 +12,36 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
+  const [touched, setTouched] = useState<{ email?: boolean; password?: boolean }>({});
 
   const { login, loginWithGoogle } = useAuth();
   const router = useRouter();
 
+  const emailRegex = /\S+@\S+\.\S+/;
+  const isEmailValid = emailRegex.test(email);
+  const isPasswordValid = password.length >= 6;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      setErrorMsg('Please enter both email and password.');
+    setTouched({ email: true, password: true });
+
+    if (!email.trim()) {
+      setErrorMsg('Please enter your email address.');
+      return;
+    }
+
+    if (!isEmailValid) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrorMsg('Please enter your password.');
+      return;
+    }
+
+    if (!isPasswordValid) {
+      setErrorMsg('Password must be at least 6 characters long.');
       return;
     }
 
@@ -86,7 +108,7 @@ export default function LoginPage() {
           <div className="space-y-3 pt-2 font-sans text-xs text-slate-300">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Real-time Gemini 2.5 Flash agent moderation</span>
+              <span>Real-time Gemini 3.6 Flash agent moderation</span>
             </div>
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -141,11 +163,21 @@ export default function LoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  onBlur={() => setTouched(prev => ({ ...prev, email: true }))}
                   placeholder="creator@warden.ai"
                   required
-                  className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-800 bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  className={`w-full pl-11 pr-4 py-3 rounded-xl border bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-sans ${
+                    touched.email && !isEmailValid 
+                      ? 'border-rose-500/60 focus:border-rose-500' 
+                      : 'border-slate-800 focus:border-emerald-500'
+                  }`}
                 />
               </div>
+              {touched.email && !isEmailValid && (
+                <p className="text-[11px] text-rose-400 mt-1 font-sans">
+                  Please enter a valid email address.
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -159,9 +191,14 @@ export default function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  onBlur={() => setTouched(prev => ({ ...prev, password: true }))}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-11 pr-11 py-3 rounded-xl border border-slate-800 bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition font-sans"
+                  className={`w-full pl-11 pr-11 py-3 rounded-xl border bg-slate-900/80 text-sm text-slate-100 placeholder-slate-500 focus:outline-none transition font-sans ${
+                    touched.password && !isPasswordValid 
+                      ? 'border-rose-500/60 focus:border-rose-500' 
+                      : 'border-slate-800 focus:border-emerald-500'
+                  }`}
                 />
                 <button
                   type="button"
@@ -171,6 +208,11 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {touched.password && !isPasswordValid && (
+                <p className="text-[11px] text-rose-400 mt-1 font-sans">
+                  Password must be at least 6 characters long.
+                </p>
+              )}
             </div>
 
             {/* Primary CTA Button */}
