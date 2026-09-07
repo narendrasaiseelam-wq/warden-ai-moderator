@@ -220,7 +220,7 @@ export const WardenChat: React.FC<WardenChatProps> = ({
   // Mode Quick Action Presets
   const modeActions: Record<AgentMode, { label: string; text: string; icon: React.ReactNode }[]> = {
     linkedin: [
-      { label: 'Turn project into LinkedIn post', text: 'I built a real-time AI moderation agent using Google Gemini 2.0 Flash and fine-tuned Qwen-1.5B QLoRA. Turned latency to 125ms and stopped 95% of scams.', icon: <Briefcase className="w-3.5 h-3.5 text-sky-400 mr-1.5 inline" /> },
+      { label: 'Turn project into LinkedIn post', text: 'I built a real-time AI moderation agent using Google Gemini 3.6 Flash and fine-tuned Qwen-1.5B QLoRA. Turned latency to 125ms and stopped 95% of scams.', icon: <Briefcase className="w-3.5 h-3.5 text-sky-400 mr-1.5 inline" /> },
       { label: 'Post on learning QLoRA', text: 'Write a professional LinkedIn post about my journey learning QLoRA fine-tuning for LLMs, key takeaways, and tips for indie devs.', icon: <Sparkles className="w-3.5 h-3.5 text-purple-400 mr-1.5 inline" /> },
       { label: 'Polite reply to recruiter', text: 'Draft a polite, professional LinkedIn reply thanking a tech recruiter for an opportunity while expressing interest in staying connected.', icon: <ArrowRight className="w-3.5 h-3.5 text-emerald-400 mr-1.5 inline" /> }
     ],
@@ -355,7 +355,7 @@ export const WardenChat: React.FC<WardenChatProps> = ({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-sm text-slate-100 font-sans">Warden Co-Pilot</span>
               <span className="text-[11px] font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700/60">
-                Gemini 2.0 Flash + Qwen Guardrails
+                Gemini 3.6 Flash + Qwen Guardrails
               </span>
             </div>
             <p className="text-xs text-slate-400 font-sans">Social Media Growth &amp; Safety Assistant</p>

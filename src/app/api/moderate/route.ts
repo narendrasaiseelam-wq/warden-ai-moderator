@@ -215,7 +215,7 @@ Current User Input to Fulfill:
       required: ['wardenMessage', 'craftedContent', 'safetyCheck']
     };
 
-    console.log(`[Warden Supervisor Agent] Executing '${targetMode}' mode with Gemini 2.0 Flash strict JSON schema...`);
+    console.log(`[Warden Supervisor Agent] Executing '${targetMode}' mode with Gemini 3.6 Flash strict JSON schema...`);
 
     let response;
     let attempts = 0;
@@ -224,7 +224,7 @@ Current User Input to Fulfill:
     while (attempts < maxAttempts) {
       try {
         response = await ai.models.generateContent({
-          model: 'gemini-2.0-flash',
+          model: 'gemini-3.6-flash',
           contents: supervisorPrompt,
           config: {
             responseMimeType: 'application/json',
@@ -238,7 +238,7 @@ Current User Input to Fulfill:
         if (attempts >= maxAttempts) {
           throw err;
         }
-        console.warn(`[Warden Agent] Retrying gemini-2.0-flash (attempt ${attempts}/${maxAttempts})...`, err?.message || err);
+        console.warn(`[Warden Agent] Retrying gemini-3.6-flash (attempt ${attempts}/${maxAttempts})...`, err?.message || err);
         await new Promise(res => setTimeout(res, 1000 * attempts));
       }
     }
@@ -320,7 +320,7 @@ Current User Input to Fulfill:
       },
       agentThoughts: [
         `Specialist Tool (Qwen-1.5B Guardrail): Evaluated content risk (${specialist.riskScore}/100). Verdict: "${specialist.specialistVerdict}"`,
-        `Supervisor Brain (Gemini 2.0 Flash): Formulated strict JSON schema response for ${targetMode.toUpperCase()} mode.`,
+        `Supervisor Brain (Gemini 3.6 Flash): Formulated strict JSON schema response for ${targetMode.toUpperCase()} mode.`,
         `Safety Guardrail: Pre-flight safety check completed cleanly.`
       ],
       recommendation: specialist.isThreat 

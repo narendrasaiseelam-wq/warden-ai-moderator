@@ -108,7 +108,7 @@ export default function LoginPage() {
           <div className="space-y-3 pt-2 font-sans text-xs text-slate-300">
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Real-time Gemini 2.0 Flash agent moderation</span>
+              <span>Real-time Gemini 3.6 Flash agent moderation</span>
             </div>
             <div className="flex items-center gap-2.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
