@@ -91,7 +91,7 @@ export const Playground: React.FC<PlaygroundProps> = ({ onAnalyze, onAddToQueue 
               <Bot className="w-4 h-4" />
             </div>
             <h2 className="text-base font-bold text-white tracking-tight">
-              Interactive Safety Playground (Gemini 2.5 Flash Agent)
+              Interactive Safety Playground (Gemini 2.0 Flash Agent)
             </h2>
           </div>
           <p className="text-xs text-gray-400 mt-1">
@@ -188,7 +188,7 @@ export const Playground: React.FC<PlaygroundProps> = ({ onAnalyze, onAddToQueue 
         <div className="p-5 rounded-xl bg-gray-950/90 border border-emerald-500/30 animate-pulse space-y-3">
           <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
             <Bot className="w-4 h-4 animate-bounce text-emerald-400" />
-            <span>Warden Agent is running Google Gemini 2.5 Flash contextual evaluation...</span>
+            <span>Warden Agent is running Google Gemini 2.0 Flash contextual evaluation...</span>
           </div>
           <div className="h-2 w-full bg-gray-800 rounded-full overflow-hidden">
             <div className="h-full bg-gradient-to-r from-emerald-500 via-cyan-400 to-teal-400 animate-pulse w-4/5" />
@@ -240,7 +240,7 @@ export const Playground: React.FC<PlaygroundProps> = ({ onAnalyze, onAddToQueue 
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-0.5">
-                  Category: <span className="font-semibold text-gray-200">{currentResult.category}</span> • Engine: <span className="font-mono text-cyan-400 font-bold">Gemini 2.5 Flash</span> ({currentResult.latencyMs || 140}ms)
+                  Category: <span className="font-semibold text-gray-200">{currentResult.category}</span> • Engine: <span className="font-mono text-cyan-400 font-bold">Gemini 2.0 Flash</span> ({currentResult.latencyMs || 140}ms)
                 </p>
               </div>
             </div>
@@ -394,7 +394,7 @@ export const Playground: React.FC<PlaygroundProps> = ({ onAnalyze, onAddToQueue 
             >
               <span className="flex items-center gap-1.5">
                 <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-                Inspect Agent Reasoning &amp; Model Trace (Qwen QLoRA + Gemini 2.5 Flash)
+                Inspect Agent Reasoning &amp; Model Trace (Qwen QLoRA + Gemini 2.0 Flash)
               </span>
               {showTechnicalTrace ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>

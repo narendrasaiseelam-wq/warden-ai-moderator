@@ -218,7 +218,7 @@ export default function Home() {
             <span>WardenAI Creator Co-Pilot • Model: <span className="text-slate-200">narendraseelam/content-moderator-qwen</span></span>
           </div>
           <div className="text-slate-500">
-            Powered by Google Gemini 3.6 Flash &amp; Qwen-1.5B QLoRA
+            Powered by Google Gemini 2.0 Flash &amp; Qwen-1.5B QLoRA
           </div>
         </div>
       </footer>

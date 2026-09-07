@@ -9,7 +9,10 @@ import {
   SuggestedReplyOption
 } from '@/types/moderation';
 
-const geminiApiKey = process.env.GEMINI_API_KEY || process.env.GROQ_API_KEY;
+function getGeminiApiKey(): string {
+  const rawKey = process.env.GEMINI_API_KEY || '';
+  return rawKey.trim().replace(/^["']+|["']+$/g, '').trim();
+}
 
 // ============================================================================
 // SPECIALIST GUARDRAIL TOOL (Simulates Qwen-1.5B QLoRA Safety Specialist)
@@ -76,6 +79,7 @@ function runSpecialistGuardrail(text: string): SpecialistAssessment {
 // ============================================================================
 export async function POST(req: NextRequest) {
   const startTime = Date.now();
+  const geminiApiKey = getGeminiApiKey();
 
   // FAIL-LOUD: Check API key existence immediately
   if (!geminiApiKey) {
@@ -211,33 +215,35 @@ Current User Input to Fulfill:
       required: ['wardenMessage', 'craftedContent', 'safetyCheck']
     };
 
-    console.log(`[Warden Supervisor Agent] Executing '${targetMode}' mode with Gemini 3.6 Flash strict JSON schema...`);
+    console.log(`[Warden Supervisor Agent] Executing '${targetMode}' mode with Gemini 2.0 Flash strict JSON schema...`);
 
     let response;
-    try {
-      response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
-        contents: supervisorPrompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema,
-          temperature: 0.2
+    let attempts = 0;
+    const maxAttempts = 3;
+
+    while (attempts < maxAttempts) {
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-2.0-flash',
+          contents: supervisorPrompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema,
+            temperature: 0.2
+          }
+        });
+        break;
+      } catch (err: any) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw err;
         }
-      });
-    } catch (primaryErr) {
-      console.warn('[Warden Agent] gemini-3.6-flash failed or unavailable. Retrying with gemini-1.5-flash fallback...', primaryErr);
-      response = await ai.models.generateContent({
-        model: 'gemini-1.5-flash',
-        contents: supervisorPrompt,
-        config: {
-          responseMimeType: 'application/json',
-          responseSchema,
-          temperature: 0.2
-        }
-      });
+        console.warn(`[Warden Agent] Retrying gemini-2.0-flash (attempt ${attempts}/${maxAttempts})...`, err?.message || err);
+        await new Promise(res => setTimeout(res, 1000 * attempts));
+      }
     }
 
-    const rawText = response.text;
+    const rawText = response?.text;
     if (!rawText) {
       throw new Error('Gemini API returned an empty response.');
     }
@@ -314,7 +320,7 @@ Current User Input to Fulfill:
       },
       agentThoughts: [
         `Specialist Tool (Qwen-1.5B Guardrail): Evaluated content risk (${specialist.riskScore}/100). Verdict: "${specialist.specialistVerdict}"`,
-        `Supervisor Brain (Gemini 2.5 Flash): Formulated strict JSON schema response for ${targetMode.toUpperCase()} mode.`,
+        `Supervisor Brain (Gemini 2.0 Flash): Formulated strict JSON schema response for ${targetMode.toUpperCase()} mode.`,
         `Safety Guardrail: Pre-flight safety check completed cleanly.`
       ],
       recommendation: specialist.isThreat 

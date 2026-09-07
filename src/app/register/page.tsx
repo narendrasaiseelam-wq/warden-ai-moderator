@@ -132,7 +132,7 @@ export default function RegisterPage() {
         {/* Footer */}
         <div className="relative z-10 text-xs text-slate-500 font-mono flex items-center gap-2">
           <Zap className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Powered by Google Gemini 3.6 Flash &amp; Qwen-1.5B QLoRA</span>
+          <span>Powered by Google Gemini 2.0 Flash &amp; Qwen-1.5B QLoRA</span>
         </div>
       </div>
 
