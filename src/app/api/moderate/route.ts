@@ -74,6 +74,36 @@ function runSpecialistGuardrail(text: string): SpecialistAssessment {
   };
 }
 
+async function callGeminiWithRetry(
+  ai: GoogleGenAI,
+  params: {
+    model: string;
+    contents: string;
+    config: any;
+  },
+  retries = 2,
+  delayMs = 2500
+) {
+  for (let i = 0; i <= retries; i++) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (err: any) {
+      const is429 = 
+        err?.status === 429 || 
+        err?.statusCode === 429 || 
+        err?.code === 429 || 
+        (typeof err?.message === 'string' && (err.message.includes('429') || err.message.includes('RESOURCE_EXHAUSTED') || err.message.includes('Quota exceeded')));
+
+      if ((is429 || i < retries) && i < retries) {
+        console.warn(`[Warden Agent] Rate limit or API error detected on ${params.model}. Retrying in ${delayMs}ms (attempt ${i + 1}/${retries})...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 // ============================================================================
 // MAIN POST HANDLER - SUPERVISOR PATTERN WITH FAIL-LOUD ERROR HANDLING
 // ============================================================================
@@ -217,31 +247,20 @@ Current User Input to Fulfill:
 
     console.log(`[Warden Supervisor Agent] Executing '${targetMode}' mode with Gemini 3.6 Flash strict JSON schema...`);
 
-    let response;
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (attempts < maxAttempts) {
-      try {
-        response = await ai.models.generateContent({
-          model: 'gemini-3.6-flash',
-          contents: supervisorPrompt,
-          config: {
-            responseMimeType: 'application/json',
-            responseSchema,
-            temperature: 0.2
-          }
-        });
-        break;
-      } catch (err: any) {
-        attempts++;
-        if (attempts >= maxAttempts) {
-          throw err;
+    const response = await callGeminiWithRetry(
+      ai,
+      {
+        model: 'gemini-3.6-flash',
+        contents: supervisorPrompt,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema,
+          temperature: 0.2
         }
-        console.warn(`[Warden Agent] Retrying gemini-3.6-flash (attempt ${attempts}/${maxAttempts})...`, err?.message || err);
-        await new Promise(res => setTimeout(res, 1000 * attempts));
-      }
-    }
+      },
+      2,
+      2500
+    );
 
     const rawText = response?.text;
     if (!rawText) {
