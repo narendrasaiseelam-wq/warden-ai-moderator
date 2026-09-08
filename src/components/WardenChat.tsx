@@ -171,6 +171,8 @@ export const WardenChat: React.FC<WardenChatProps> = ({
 
   const handleSignOut = async () => {
     try {
+      localStorage.removeItem('warden_agentic_sessions_v3');
+      localStorage.removeItem('warden_sessions_guest');
       await supabase.auth.signOut();
     } catch (e) {
       console.debug('Supabase sign out note:', e);
@@ -184,15 +186,22 @@ export const WardenChat: React.FC<WardenChatProps> = ({
     let isMounted = true;
 
     if (!user) {
-      // Immediate clean state reset on sign-out
-      setChatSessions(getInitialWelcomeMessages(activeMode));
-      setIsHydrated(true);
+      // Absolute zero-history enforcement for signed-out users
+      try {
+        localStorage.removeItem('warden_agentic_sessions_v3');
+        localStorage.removeItem('warden_sessions_guest');
+      } catch (e) {}
+      
+      if (isMounted) {
+        setChatSessions(getInitialWelcomeMessages(activeMode));
+        setIsHydrated(true);
+      }
       return;
     }
 
     const hydrateChat = async () => {
       try {
-        const saved = localStorage.getItem(storageKey) || localStorage.getItem(`warden_agentic_sessions_${userKey}`);
+        const saved = localStorage.getItem(storageKey);
         if (saved) {
           const parsed = JSON.parse(saved);
           if (isMounted) {
