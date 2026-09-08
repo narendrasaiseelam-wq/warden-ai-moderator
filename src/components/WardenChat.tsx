@@ -7,6 +7,8 @@ import {
   AlertTriangle, ArrowRight, CheckCircle2, RotateCcw, Camera
 } from 'lucide-react';
 import { ModerationResult, QueueItem, AgentMode, SuggestedReplyOption } from '@/types/moderation';
+import { useAuth } from '@/context/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
 
 export interface ChatMessage {
   id: string;
@@ -93,7 +95,7 @@ function renderMainBodyContent(body: string, isInstagram: boolean): React.ReactN
   );
 }
 
-const DEFAULT_WORKSPACE_MESSAGES: Record<AgentMode, ChatMessage[]> = {
+export const DEFAULT_WORKSPACE_MESSAGES: Record<AgentMode, ChatMessage[]> = {
   linkedin: [
     {
       id: 'welcome-linkedin',
@@ -141,12 +143,20 @@ const DEFAULT_WORKSPACE_MESSAGES: Record<AgentMode, ChatMessage[]> = {
   ]
 };
 
+export function getInitialWelcomeMessages(mode: AgentMode = 'linkedin'): Record<AgentMode, ChatMessage[]> {
+  return DEFAULT_WORKSPACE_MESSAGES;
+}
+
 export const WardenChat: React.FC<WardenChatProps> = ({
   onAnalyze,
   onAddToQueue,
   externalInput = '',
   onClearExternalInput
 }) => {
+  const { user, logout } = useAuth();
+  const userKey = user?.email || user?.id;
+  const storageKey = userKey ? `warden_sessions_${userKey}` : 'warden_sessions_guest';
+
   const [activeMode, setActiveMode] = useState<AgentMode>('linkedin');
   const [chatSessions, setChatSessions] = useState<Record<AgentMode, ChatMessage[]>>(DEFAULT_WORKSPACE_MESSAGES);
   const [isHydrated, setIsHydrated] = useState<boolean>(false);
@@ -159,37 +169,104 @@ export const WardenChat: React.FC<WardenChatProps> = ({
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Client-safe hydration check from localStorage
-  useEffect(() => {
+  const handleSignOut = async () => {
     try {
-      const saved = localStorage.getItem('warden_agentic_sessions_v3');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        setChatSessions({
-          linkedin: Array.isArray(parsed.linkedin) && parsed.linkedin.length > 0 ? parsed.linkedin : DEFAULT_WORKSPACE_MESSAGES.linkedin,
-          twitter: Array.isArray(parsed.twitter) && parsed.twitter.length > 0 ? parsed.twitter : DEFAULT_WORKSPACE_MESSAGES.twitter,
-          instagram: Array.isArray(parsed.instagram) && parsed.instagram.length > 0 ? parsed.instagram : DEFAULT_WORKSPACE_MESSAGES.instagram,
-          shield: Array.isArray(parsed.shield) && parsed.shield.length > 0 ? parsed.shield : DEFAULT_WORKSPACE_MESSAGES.shield,
-          general: Array.isArray(parsed.general) && parsed.general.length > 0 ? parsed.general : DEFAULT_WORKSPACE_MESSAGES.general
-        });
-      }
-    } catch (err) {
-      console.warn('Failed to load saved chat sessions from localStorage:', err);
-    } finally {
-      setIsHydrated(true);
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.debug('Supabase sign out note:', e);
     }
-  }, []);
+    setChatSessions(getInitialWelcomeMessages(activeMode));
+    logout();
+  };
 
-  // Persist chat sessions to localStorage when updated
+  // Client-safe user-scoped hydration check & Sign-out reset
   useEffect(() => {
-    if (isHydrated) {
+    let isMounted = true;
+
+    if (!user) {
+      // Immediate clean state reset on sign-out
+      setChatSessions(getInitialWelcomeMessages(activeMode));
+      setIsHydrated(true);
+      return;
+    }
+
+    const hydrateChat = async () => {
       try {
-        localStorage.setItem('warden_agentic_sessions_v3', JSON.stringify(chatSessions));
+        const saved = localStorage.getItem(storageKey) || localStorage.getItem(`warden_agentic_sessions_${userKey}`);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (isMounted) {
+            setChatSessions({
+              linkedin: Array.isArray(parsed.linkedin) && parsed.linkedin.length > 0 ? parsed.linkedin : getInitialWelcomeMessages(activeMode).linkedin,
+              twitter: Array.isArray(parsed.twitter) && parsed.twitter.length > 0 ? parsed.twitter : getInitialWelcomeMessages(activeMode).twitter,
+              instagram: Array.isArray(parsed.instagram) && parsed.instagram.length > 0 ? parsed.instagram : getInitialWelcomeMessages(activeMode).instagram,
+              shield: Array.isArray(parsed.shield) && parsed.shield.length > 0 ? parsed.shield : getInitialWelcomeMessages(activeMode).shield,
+              general: Array.isArray(parsed.general) && parsed.general.length > 0 ? parsed.general : getInitialWelcomeMessages(activeMode).general
+            });
+          }
+        } else {
+          if (isMounted) {
+            setChatSessions(getInitialWelcomeMessages(activeMode));
+          }
+        }
+
+        // Fetch user-scoped chat history from Supabase if user is logged in
+        if (userKey) {
+          const { data, error } = await supabase
+            .from('chat_sessions')
+            .select('sessions_data')
+            .eq('user_id', userKey)
+            .maybeSingle();
+
+          if (!error && data?.sessions_data && isMounted) {
+            const remote = data.sessions_data;
+            setChatSessions({
+              linkedin: Array.isArray(remote.linkedin) && remote.linkedin.length > 0 ? remote.linkedin : getInitialWelcomeMessages(activeMode).linkedin,
+              twitter: Array.isArray(remote.twitter) && remote.twitter.length > 0 ? remote.twitter : getInitialWelcomeMessages(activeMode).twitter,
+              instagram: Array.isArray(remote.instagram) && remote.instagram.length > 0 ? remote.instagram : getInitialWelcomeMessages(activeMode).instagram,
+              shield: Array.isArray(remote.shield) && remote.shield.length > 0 ? remote.shield : getInitialWelcomeMessages(activeMode).shield,
+              general: Array.isArray(remote.general) && remote.general.length > 0 ? remote.general : getInitialWelcomeMessages(activeMode).general
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load saved chat sessions:', err);
+        if (isMounted) setChatSessions(getInitialWelcomeMessages(activeMode));
+      } finally {
+        if (isMounted) setIsHydrated(true);
+      }
+    };
+
+    hydrateChat();
+    return () => { isMounted = false; };
+  }, [user, activeMode, storageKey, userKey]);
+
+  // Persist user-scoped chat sessions to localStorage & Supabase when updated
+  useEffect(() => {
+    if (isHydrated && user) {
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(chatSessions));
       } catch (err) {
         console.warn('Failed to persist chat sessions to localStorage:', err);
       }
+
+      if (userKey) {
+        Promise.resolve(
+          supabase
+            .from('chat_sessions')
+            .upsert({
+              user_id: userKey,
+              sessions_data: chatSessions,
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'user_id' })
+        ).then(({ error }) => {
+          if (error) {
+            console.debug('Supabase chat persistence note:', error.message);
+          }
+        }).catch(() => {});
+      }
     }
-  }, [chatSessions, isHydrated]);
+  }, [chatSessions, isHydrated, storageKey, user, userKey]);
 
   // Sync external input from page hero presets
   useEffect(() => {

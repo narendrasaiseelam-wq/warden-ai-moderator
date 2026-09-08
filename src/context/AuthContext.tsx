@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 export type UserRole = 'Trust & Safety Lead' | 'Community Moderator' | 'Security Engineer' | 'Creator Co-Pilot' | string;
 
@@ -186,10 +187,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     saveUserSession(DEMO_MODERATOR_USER);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.debug('Supabase sign out note:', err);
+    }
     setUser(null);
     localStorage.removeItem('warden_current_user');
     localStorage.removeItem('warden_user_session');
+    localStorage.removeItem('warden_sessions_guest');
     localStorage.setItem('warden_logged_out', 'true');
   };
 
